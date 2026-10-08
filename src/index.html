@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="generator" content="RIA Arrival Timing {{VERSION}} ({{BUILD_DATE}})">
-<title>RIA continuous sample arrival timing v{{VERSION}}</title>
+<meta name="generator" content="RIA Viewer {{VERSION}} ({{BUILD_DATE}})">
+<title>RIA Viewer v{{VERSION}}</title>
 <style>
 {{CSS}}
 </style>
@@ -13,21 +13,26 @@
 <body>
 <header>
   <span class="logo">Graftek</span>
-  <div class="ttl"><h1>RIA continuous sample arrival timing <span class="ver">v{{VERSION}}</span></h1>
-    <span class="sub" id="sub" title="When each Continuous sample became available to RIA, and where the transfer time goes">When each Continuous sample became available to RIA, and where the transfer time goes</span></div>
+  <div class="ttl"><h1>RIA Viewer <span class="ver">v{{VERSION}}</span></h1>
+    <span class="sub" id="sub"></span></div>
   <div class="ctl" id="ctl" hidden>
     <label title="A gap of at least this many seconds between two RIA pickups in the same burst counts as RIA waiting for a sample that was not ready">Wait ≥ <input type="number" id="thr" value="10" min="1" step="1"> s</label>
     <label title="RIA queue ceiling depends on the camera">Camera <select id="cam"><option value="50">Optyx6000 (50)</option><option value="100">Manta (100)</option></select></label>
     <button id="addDir" title="Add another key images folder (another day)">Add folder</button><button id="addBtn" title="Add another CSV (another day)">Add CSV</button>
     <button id="clrBtn" title="Clear loaded data">Clear</button>
   </div>
-  <div class="ctl"><button id="guideBtn" title="Open the step-by-step guide">Guide</button><button id="dlScript" title="Download the PowerShell scripts (file list and mailbox watcher)">Scripts</button><span class="files" id="dlMsg"></span></div>
+  <div class="ctl" id="ctlTiming"><button id="guideBtn" title="Open the step-by-step guide">Guide</button><button id="dlScript" title="Download the PowerShell scripts (file list and mailbox watcher)">Scripts</button><span class="files" id="dlMsg"></span></div>
+  <nav class="tabs" role="tablist" aria-label="Tools">
+    <button role="tab" id="tabTiming" data-tab="timing" aria-selected="true">Arrival timing</button>
+    <button role="tab" id="tabFiles" data-tab="files" aria-selected="false">Files explorer</button>
+  </nav>
 </header>
 <script type="text/plain" id="ps1src">{{PS1_FILES}}</script>
 <script type="text/plain" id="ps1watch">{{PS1_WATCH}}</script>
 <input type="file" id="file" accept=".csv,text/csv" multiple hidden>
 <input type="file" id="dir" webkitdirectory directory multiple hidden>
 <main>
+<div id="tab-timing" role="tabpanel" aria-labelledby="tabTiming">
 <section id="empty" class="empty">
   <h2>Load key images timing data</h2>
   <p>On the RIA server, browse straight to a <code>key images</code> day folder, for example <code>E:\RIA Data\Continuous Logs\key images\2026-10\07</code>. Anywhere else, load the <code>KeyImageFiles_&lt;date&gt;.csv</code> made by the script (<b>Scripts</b>, top right). Everything is processed in this page; nothing is uploaded or sent anywhere.</p>
@@ -199,8 +204,60 @@
     <span class="files" id="expMsg"></span>
   </footer>
 </section>
+</div>
+<div id="tab-files" role="tabpanel" aria-labelledby="tabFiles" hidden>
+  <div class="fxbar">
+    <div class="fxfolder"><span class="fxlbl">Folder</span><span class="fxroot unset" id="fxRoot">E:\RIA Data</span>
+      <button id="fxOpen" title="Pick another folder: E:\RIA Data, Main Logs, Continuous Logs, a key images folder, or one month or day folder. Nothing is read until Load files.">Change…</button></div>
+    <div class="fxrange" title="Only the month and day folders that overlap this range are opened, and only the sample folders inside it are read">
+      <label title="Which key images to load. Both are under E:\RIA Data (Main Logs\key images and Continuous Logs\key images)">Log <select id="fxLog"><option value="">Main + Continuous</option><option value="Main">Main Logs</option><option value="Continuous">Continuous Logs</option></select></label>
+      <label>From <input type="datetime-local" id="fxFrom" step="1"></label>
+      <label>To <input type="datetime-local" id="fxTo" step="1"></label>
+      <span class="fxspan" id="fxSpan"></span>
+      <select id="fxPreset" aria-label="Range preset" title="Ranges end at the time this page was opened"><option value="">Preset…</option><option value="h1">Last hour</option><option value="h8">Last 8 hours</option><option value="d1">Last 24 hours</option><option value="today">Today</option><option value="d7">Last 7 days</option></select>
+    </div>
+    <button class="primary big" id="fxLoad" title="Find the sample folders in the range and read their header.txt files. Replaces what is loaded.">Load files</button>
+  </div>
+  <div class="fxstatus"><span id="fxAvail"></span><span id="fxProg"></span><button id="fxCancel" hidden>Cancel</button></div>
+  <div class="subtabs" role="tablist" aria-label="Files explorer">
+    <button role="tab" data-sub="key" aria-selected="true">Key images</button>
+    <button role="tab" data-sub="cal" aria-selected="false">Calibrations</button>
+    <button role="tab" data-sub="res" aria-selected="false">Results</button>
+  </div>
+  <div id="fx-key" class="fxpane">
+    <aside class="fxside">
+      <div class="fxchips" id="fxChips"></div>
+      <div class="fxtree" id="fxTree" role="tree" tabindex="0" aria-label="Key images samples"></div>
+    </aside>
+    <section class="fxview" id="fxView">
+      <div class="fxintro">
+        <h2>Key images</h2>
+        <p>Nothing is read until you click <b>Load files</b>. Then only the month and day folders that overlap <b>From</b> / <b>To</b> are opened, and only the sample folders inside the range are read (their file list and <code>header.txt</code>). Images load when you select a sample. Each load replaces the previous one, so keep the range short on a busy server; the page asks before loading more than 3000 samples.</p>
+        <p>The range starts as the 24 hours before this page was opened. The folder defaults to <code>E:\RIA Data</code>, but browsers cannot open a folder from its path, so the first <b>Load files</b> asks you to pick it once. It is remembered after that; the browser only asks to allow access again. Use <b>Change…</b> to pick <code>Main Logs</code>, <code>Continuous Logs</code>, a <code>key images</code> folder or a single month or day folder instead. Nothing is uploaded or changed.</p>
+        <ul class="steps">
+          <li><span class="tb ib">IB</span> <b>In-Bag</b> and <span class="tb md">MD</span> <b>Mini-Dump</b>: Continuous Logs, typed by <code>RecycleContent</code>. A Mini-Dump sample needs both <code>RecycleContent</code> and <code>FryerContent</code> set to Mini-Dump; mis-tagged headers are flagged.</li>
+          <li><span class="tb fe">FE</span> <b>Fryer Exit</b> (and Mini-Dump): Main Logs, typed by <code>FryerContent</code>.</li>
+          <li>Keyboard: <kbd>↑</kbd> <kbd>↓</kbd> move between samples in the tree; click an image to open it full size (wheel zoom, drag to pan, <kbd>←</kbd> <kbd>→</kbd> switch image, <kbd>Esc</kbd> close).</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+  <div id="fx-cal" class="note" hidden><b>Calibrations</b> will be the next sub-tab: <code>GraftekMailbox/Calibrations</code> backups and the color tables RIA sent to Key.</div>
+  <div id="fx-res" class="note" hidden><b>Results</b> will follow: <code>Main Logs
+esults</code> and <code>Continuous Logs
+esults</code> (chip overlays, class displays, cumulative spreadsheets) per sample type.</div>
+</div>
 </main>
+<input type="file" id="fxDir" webkitdirectory directory multiple hidden>
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Image viewer">
+  <div class="lbbar"><span id="lbTitle"></span><span class="files" id="lbInfo"></span><span class="sp"></span>
+    <button id="lbPrev" title="Previous image (←)">‹</button><button id="lbNext" title="Next image (→)">›</button>
+    <button id="lbFit" title="Fit to window (double-click)">Fit</button><button id="lb1" title="Actual pixels">1:1</button><button id="lbClose" title="Close (Esc)">✕</button></div>
+  <div class="lbstage" id="lbStage"><img id="lbImg" alt=""></div>
+</div>
 <script>
 {{CORE}}
+{{KEYIMG}}
 {{APP}}
+{{EXPLORER}}
 </script></body></html>
