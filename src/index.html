@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="generator" content="RIA Arrival Timing {{VERSION}} ({{BUILD_DATE}})">
+<title>RIA continuous sample arrival timing v{{VERSION}}</title>
+<style>
+{{CSS}}
+</style>
+<script>
+{{CHARTJS}}
+</script>
+</head>
+<body>
+<header>
+  <span class="logo">Graftek</span>
+  <div class="ttl"><h1>RIA continuous sample arrival timing <span class="ver">v{{VERSION}}</span></h1>
+    <span class="sub" id="sub" title="When each Continuous sample became available to RIA, and where the transfer time goes">When each Continuous sample became available to RIA, and where the transfer time goes</span></div>
+  <div class="ctl" id="ctl" hidden>
+    <label title="A gap of at least this many seconds between two RIA pickups in the same burst counts as RIA waiting for a sample that was not ready">Wait ≥ <input type="number" id="thr" value="10" min="1" step="1"> s</label>
+    <label title="RIA queue ceiling depends on the camera">Camera <select id="cam"><option value="50">Optyx6000 (50)</option><option value="100">Manta (100)</option></select></label>
+    <button id="addDir" title="Add another key images folder (another day)">Add folder</button><button id="addBtn" title="Add another CSV (another day)">Add CSV</button>
+    <button id="clrBtn" title="Clear loaded data">Clear</button>
+  </div>
+  <div class="ctl"><button id="guideBtn" title="Open the step-by-step guide">Guide</button><button id="dlScript" title="Download the PowerShell scripts (file list and mailbox watcher)">Scripts</button><span class="files" id="dlMsg"></span></div>
+</header>
+<script type="text/plain" id="ps1src">{{PS1_FILES}}</script>
+<script type="text/plain" id="ps1watch">{{PS1_WATCH}}</script>
+<input type="file" id="file" accept=".csv,text/csv" multiple hidden>
+<input type="file" id="dir" webkitdirectory directory multiple hidden>
+<main>
+<section id="empty" class="empty">
+  <h2>Load key images timing data</h2>
+  <p>On the RIA server, browse straight to a <code>key images</code> day folder, for example <code>E:\RIA Data\Continuous Logs\key images\2026-10\07</code>. Anywhere else, load the <code>KeyImageFiles_&lt;date&gt;.csv</code> made by the script (<b>Scripts</b>, top right). Everything is processed in this page; nothing is uploaded or sent anywhere.</p>
+  <div class="pick">
+    <button class="primary big" id="dirBtn">Browse key images folder…</button>
+    <button class="big" id="csvBtn">Load CSV…</button>
+  </div>
+  <div class="drop" id="drop" role="button" tabindex="0"><span class="files">or drop CSV files here</span></div>
+  <div class="files" id="prog"></div>
+  <div class="err" id="err"></div>
+</section>
+<details class="sec guide" id="s-guide" open><summary><span class="sp">How to use this tool</span></summary><div class="body">
+  <p class="why">This page reads the file names and timestamps of a <code>key images</code> day folder, either directly (on the RIA server) or from a CSV made by the script, and derives every timing figure from them. CSVs from the older <code>RIA_KeyImage_Timing</code> script (<code>_files.csv</code>, <code>_summary.csv</code>) also load.</p>
+  <h3 class="h3">A. On the RIA server: browse the folder (no script needed)</h3>
+  <ol class="steps">
+    <li><b>Copy this HTML file to the RIA server</b>, for example to the Desktop, and open it in Edge or Chrome. It works offline; everything it needs is inside the file.</li>
+    <li><b>Click Browse key images folder…</b> and select a day folder:<br><code>E:\RIA Data\Continuous Logs\key images\&lt;yyyy-MM&gt;\&lt;dd&gt;</code>, e.g. <code>E:\RIA Data\Continuous Logs\key images\2026-10\07</code>.<br>A month folder (<code>...\key images\2026-10</code>) also works and loads every day in it, but takes longer.</li>
+    <li><b>Confirm the browser prompt.</b> Edge and Chrome ask "Upload N files to this site?". Click <b>Upload</b>: nothing leaves the PC. The page only reads file names and Modified times, never file contents, and changes nothing on disk.</li>
+    <li><b>Add more days</b> with <b>Add folder</b>. Days are combined on the same charts.</li>
+  </ol>
+  <h3 class="h3">B. Anywhere else: run the script, load the CSV</h3>
+  <ol class="steps">
+    <li><b>Click Scripts</b> (top right) and save <code>RIA_scripts.zip</code>. Extract it on the RIA server and unblock <code>RIA_KeyImage_Files_v2.00.ps1</code> (right-click &gt; Properties &gt; Unblock).</li>
+    <li><b>Copy the script into the day folder</b> (<code>E:\RIA Data\Continuous Logs\key images\2026-10\07\</code>), next to the sample folders, and <b>Run with PowerShell</b>. If right-click is blocked:<br><code>powershell -ExecutionPolicy Bypass -File "E:\RIA Data\Continuous Logs\key images\2026-10\07\RIA_KeyImage_Files_v2.00.ps1"</code></li>
+    <li><b>Take <code>KeyImageFiles_2026-10-07.csv</code> from the Desktop</b>, delete the script from the day folder, and load the CSV here with <b>Load CSV…</b>. The CSV also carries Created times, so it gives exact RIA copy times (chart 7) and the ready.txt check.</li>
+    <li>The zip also contains <code>RIA_Mailbox_Watch_v1.00.ps1</code>, a read-only watcher for the Key mailbox that logs when <code>ready1.txt</code> and BCRT's <code>Ready.txt</code> really appear and estimates the CFG–RIA clock offset. Run it on the RIA server through at least one burst.</li>
+  </ol>
+  <h3 class="h3">Then</h3>
+  <ol class="steps">
+    <li><b>Set the options.</b> <b>Camera</b> sets the RIA queue ceiling (Optyx6000 50, Manta 100). <b>Wait ≥</b> (default 10 s) is the gap between two pickups that counts as RIA waiting. In section 9, <b>Measure</b> and <b>Delayed if ≥</b> (default 30 s) set the per-sample delayed / on-time tag.</li>
+    <li><b>Export.</b> <b>Export to Excel</b> writes Summary, Readings (every sample with its tags), Fits and About sheets. <b>Save charts as PNG</b> saves every chart for Jira or the site.</li>
+  </ol>
+  <h3 class="h3">What each section shows</h3>
+  <table class="gtab"><tbody>
+    <tr><td>Headline cards and findings</td><td>Recomputed from the loaded data: % of samples without BCRT handoff files, RIA's median pickup interval when samples were ready, total time RIA spent waiting, slowest, off-cadence, overlapping and oversized bursts.</td></tr>
+    <tr><td>ready1.txt vs ready.txt</td><td>Which marker file is written by whom: ready1.txt by the Key CFG (signal to BCRT), Ready.txt in the mailbox by BCRT (signal to RIA, its time is lost in the move), and ready.txt in key images by RIA itself at the end of the copy. The chart plots every file's timestamp for one burst.</td></tr>
+    <tr><td>1. Capture to pickup</td><td>Every sample: seconds from capture (folder name) to RIA starting to copy it. Low flat clusters are healthy bursts; tall columns are bursts where samples became available late.</td></tr>
+    <tr><td>2. Where the time goes</td><td>Per burst, first capture to last pickup split into gray (before RIA picked up the first sample, not attributable from this data), blue (RIA moving ready samples) and hatched orange (RIA waiting for a sample that was not ready). Orange is time spent waiting on samples Key had not released yet. Click a bar to open the burst in chart 3.</td></tr>
+    <tr><td>3. One burst</td><td>Each sample in capture order. A flat line is RIA moving ready samples back to back; each step up of about 30 s is the protocol wait for a sample's <code>ready.txt</code>. Crosses mark samples without BCRT handoff files.</td></tr>
+    <tr><td>4. Pickup interval by type</td><td>Distribution of the gap before each pickup, split complete / incomplete. Healthy samples sit under 1 s; the 30–35 s bin is the protocol wait, and shows which sample type causes it.</td></tr>
+    <tr><td>5. Completeness per burst</td><td>% of each burst missing BCRT handoff files (<code>ready1.txt</code>, <code>bcrt.settings</code>) and the longest run of them in a row. Long runs are what stretch a burst.</td></tr>
+    <tr><td>6. Cadence and size</td><td>Samples per burst against the queue ceiling, and minutes since the previous burst. Diamonds below 20 min are bursts that arrived off the normal cadence.</td></tr>
+    <tr><td>7. RIA copy time</td><td>Seconds RIA took to copy each sample once started. A steady low band means the move itself is fast; a step change usually marks a restart. If this is high, the delay is on the RIA side.</td></tr>
+    <tr><td>8. Burst table</td><td>One row per burst with every figure above; rows with a minute or more of waiting are shaded. Click a row to open it in chart 3.</td></tr>
+    <tr><td>9. Delay tagging</td><td>Each sample tagged delayed / on time against the threshold, with a histogram, a time series, delayed samples per burst, delayed share by hour of day and a filterable sample list.</td></tr>
+  </tbody></table>
+  <h3 class="h3">Before quoting numbers</h3>
+  <ul class="steps">
+    <li>How the list becomes timings: capture is the timestamp in the folder name; RIA pickup is the earliest file Created time; copy end is the latest file Created time; a sample is complete when it holds <code>ready1.txt</code> and <code>bcrt.settings</code>.</li>
+    <li>Capture time comes from the sorter / CFG clock; pickup comes from the RIA server clock. Check the offset with <code>w32tm /stripchart /computer:&lt;CFG IP&gt; /samples:3 /dataonly</code> on the RIA server.</li>
+    <li>The <code>ready.txt</code> inside <code>key images</code> is written by RIA when the move finishes, so it is not a Key timestamp. This page never uses it as one.</li>
+    <li>A folder being in <code>key images</code> does not prove RIA processed it into In-Bag results; compare against the results folder and the Event Viewer queue messages.</li>
+  </ul>
+</div></details>
+<section id="app" hidden>
+  <div class="files" id="loaded"></div>
+  <div class="note warnnote" id="modeNote" hidden><b>Folder mode.</b> The browser can only read each file's Modified time, not its Created time. RIA pickup is therefore taken as the time RIA wrote its own <code>ready.txt</code> (the end of the copy, 0.01–1.5 s after it started), and RIA copy time (chart 7) and the ready.txt Created = Modified check are not available. Intervals, waits and completeness are unaffected. For exact copy times, use the script CSV.</div>
+  <div class="note"><h3>What this measures</h3>
+    <ul>
+      <li><b>Capture</b> is the timestamp in the sample folder name (sorter / CFG clock). <b>RIA pickup</b> is when RIA started copying the sample into <code>key images</code> (the earliest file Created time on the RIA server); the copy ends at the latest file Created time.</li>
+      <li><b>Complete</b> samples carry the BCRT handoff files (<code>ready1.txt</code> and <code>bcrt.settings</code>). <b>Incomplete</b> samples arrived with only <code>frameGrab</code> and <code>header</code>.</li>
+      <li>A <b>wait</b> is a gap between two pickups in the same burst at or above the threshold. Per the mailbox protocol, RIA waits up to 30 s for a sample's <code>ready.txt</code> before moving on.</li>
+      <li>The <code>ready.txt</code> inside <code>key images</code> is written by RIA when the move finishes, so it is not used as a Key timestamp. Capture and pickup come from different clocks; check CFG–RIA clock skew before quoting single-second figures.</li>
+    </ul></div>
+  <details class="sec" open id="s-ready"><summary><span class="sp">ready1.txt vs ready.txt: who writes what</span><select id="rsel" onclick="event.stopPropagation()"></select></summary><div class="body">
+    <p class="why">Two marker files with almost the same name mean different things and are written by different systems. Only one of them carries a Key timestamp into <code>key images</code>.</p>
+    <div class="tw"><svg class="flow" viewBox="0 0 900 250" role="img" aria-label="Handoff from the Key CFG computer through BCRT to RIA">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--text)"/></marker></defs>
+      <rect x="10" y="8" width="570" height="22" rx="4" style="fill:var(--bad-bg)"/><text x="295" y="23" text-anchor="middle" class="lane" style="fill:var(--bad)">Key side · CFG computer · GraftekMailbox\Continuous</text>
+      <rect x="610" y="8" width="280" height="22" rx="4" style="fill:var(--ok-bg)"/><text x="750" y="23" text-anchor="middle" class="lane" style="fill:var(--ok)">RIA side · key images</text>
+      <rect x="10" y="40" width="250" height="150" rx="6" class="bx"/>
+      <text x="22" y="62" class="bt">1 · CFG writes the sample</text>
+      <text x="22" y="84" class="bl">frameGrab, header.txt</text><text x="22" y="104" class="bl">bcrt.settings</text>
+      <text x="22" y="124" class="bl mono">ready1.txt</text><text x="22" y="142" class="bs">= "BCRT, correct this image"</text>
+      <text x="22" y="170" class="bs">Modified time kept: ≈ capture</text>
+      <rect x="330" y="40" width="250" height="150" rx="6" class="bx"/>
+      <text x="342" y="62" class="bt">2 · BCRT color-corrects</text>
+      <text x="342" y="84" class="bl">Band Corrector Real Time</text>
+      <text x="342" y="124" class="bl mono">Ready.txt</text><text x="342" y="142" class="bs">= "RIA, take this sample"</text>
+      <text x="342" y="170" class="bs" style="fill:var(--bad)">Time NOT kept: replaced in the move</text>
+      <rect x="640" y="40" width="250" height="150" rx="6" class="bx"/>
+      <text x="652" y="62" class="bt">3 · RIA copies the folder</text>
+      <text x="652" y="84" class="bl">files Created = copy time</text>
+      <text x="652" y="124" class="bl mono">ready.txt (RIA's own)</text><text x="652" y="142" class="bs">written last, Created = Modified</text>
+      <text x="652" y="170" class="bs">= end of RIA copy, not a Key time</text>
+      <line x1="262" y1="118" x2="326" y2="118" style="stroke:var(--text)" stroke-width="1.5" marker-end="url(#ar)"/><text x="294" y="110" text-anchor="middle" class="bs mono">ready1</text>
+      <line x1="582" y1="118" x2="636" y2="118" style="stroke:var(--text)" stroke-width="1.5" marker-end="url(#ar)"/><text x="609" y="110" text-anchor="middle" class="bs mono">Ready</text>
+      <text x="10" y="215" class="bs">If BCRT's Ready.txt is not there when RIA reaches the sample, RIA waits up to 30 s (mailbox protocol), then moves on.</text>
+      <text x="10" y="235" class="bs">Samples without ready1.txt and bcrt.settings never got the BCRT handoff files; they cause most of the 30 s waits.</text>
+    </svg></div>
+    <div class="kpis" id="rKpis"></div>
+    <div class="tw"><table id="rTab" class="gtab"></table></div>
+    <h3 class="h3">File timestamps per sample, selected burst</h3>
+    <p class="why">Seconds after capture for each file in each sample. Key's files sit near zero; RIA's pickup and RIA's own ready.txt sit together, later. The gap between them is the time the sample spent waiting in the mailbox.</p>
+    <div class="legend"><span>&#9632; header.txt (Key)</span><span>&#9650; ready1.txt (Key)</span><span>&#9670; bcrt.settings (Key)</span><span>&#9675; RIA pickup (first file copied)</span><span>&#9733; ready.txt (RIA, copy end)</span></div>
+    <div class="cw tall"><canvas id="c0"></canvas></div>
+    <p class="files" id="rNote"></p>
+  </div></details>
+
+  <div class="kpis" id="kpis"></div>
+  <ul class="findings" id="findings"></ul>
+
+  <details class="sec" open id="s-time"><summary><span class="sp">1. Time from capture until RIA could pick the sample up</span></summary><div class="body">
+    <p class="why">Every sample over the loaded period. Flat clusters near the bottom are samples that were ready when RIA reached them; tall columns are bursts where samples became available late.</p>
+    <div class="legend"><span><span class="sw" style="background:var(--ok);border-radius:50%"></span>Complete (circle)</span><span><span class="sw" style="background:var(--bad)"></span>Incomplete, no BCRT handoff files (cross)</span></div>
+    <div class="cw tall"><canvas id="c1"></canvas></div></div></details>
+
+  <details class="sec" open id="s-break"><summary><span class="sp">2. Where the time goes in each burst</span></summary><div class="body">
+    <p class="why">Seconds from the first capture of the burst to the last RIA pickup. Gray: before RIA picked up the first sample. Blue: RIA moving samples that were ready. Hatched orange: RIA waiting for a sample that was not ready yet. Click a bar to open it in chart 3.</p>
+    <div class="cw tall"><canvas id="c2"></canvas></div></div></details>
+
+  <details class="sec" open id="s-stair"><summary><span class="sp">3. One burst, sample by sample</span><select id="bsel" onclick="event.stopPropagation()"></select></summary><div class="body">
+    <p class="why">Each sample's capture-to-pickup time in capture order. A flat line means RIA is moving ready samples back to back; each step up is RIA waiting for the next sample to become available.</p>
+    <div class="legend"><span><span class="sw" style="background:var(--ok);border-radius:50%"></span>Complete (circle)</span><span><span class="sw" style="background:var(--bad)"></span>Incomplete (cross)</span></div>
+    <div class="cw"><canvas id="c3"></canvas></div></div></details>
+
+  <details class="sec" open id="s-dist"><summary><span class="sp">4. Interval between consecutive RIA pickups, by sample type</span></summary><div class="body">
+    <p class="why">How long RIA had to wait before each sample, split by whether the sample carried the BCRT handoff files. Ready samples cluster under 1 s; the 30–35 s bin is the protocol wait.</p>
+    <div class="cw"><canvas id="c4"></canvas></div></div></details>
+
+  <details class="sec" id="s-comp"><summary><span class="sp">5. Key output completeness per burst</span></summary><div class="body">
+    <p class="why">Share of samples in each burst without BCRT handoff files, and the longest unbroken run of them. Long runs are what stretch a burst, because each one can cost a 30 s wait.</p>
+    <div class="cw"><canvas id="c5"></canvas></div></div></details>
+
+  <details class="sec" id="s-cad"><summary><span class="sp">6. Burst cadence and size</span></summary><div class="body">
+    <p class="why">Bars: samples per burst against the RIA queue ceiling for the selected camera. Line: minutes since the previous burst; points below the dashed line arrived off the normal cadence.</p>
+    <div class="cw"><canvas id="c6"></canvas></div></div></details>
+
+  <details class="sec" id="s-move"><summary><span class="sp">7. RIA copy time per sample</span></summary><div class="body">
+    <p class="why">Seconds RIA took to copy each sample once it started (first file created to folder finished). A steady, low band shows the move itself is not where the delay builds up; a step change usually marks a restart.</p>
+    <div class="cw"><canvas id="c7"></canvas></div><p class="files" id="c7note"></p></div></details>
+
+  <details class="sec" open id="s-tab"><summary><span class="sp">8. Burst table</span></summary><div class="body">
+    <div class="tw"><table id="tab"></table></div></div></details>
+
+  <details class="sec" open id="s-delay"><summary><span class="sp">9. Delay tagging per sample</span></summary><div class="body">
+    <p class="why">Each sample is tagged delayed or on time against the threshold below. The tag drives the histogram, the time series and the list in this section, and is included in the Excel export.</p>
+    <div class="ctl dctl">
+      <label title="Interval: seconds between this sample's RIA pickup and the previous one in the same burst (the first sample of a burst has no interval and is left untagged). Capture to pickup: seconds from the folder-name timestamp to RIA pickup.">Measure <select id="dMetric"><option value="gap">Interval since previous pickup</option><option value="pick">Capture to RIA pickup</option></select></label>
+      <label>Delayed if ≥ <input type="number" id="dThr" value="30" min="0" step="1"> s</label>
+      <label>Bin <input type="number" id="dBin" value="5" min="0.1" step="0.5"> s</label>
+      <label><input type="checkbox" id="dLog" checked> Log count</label>
+    </div>
+    <div class="kpis" id="dKpis"></div>
+    <h3 class="h3">Histogram of the measure</h3>
+    <div class="legend"><span><span class="sw" style="background:var(--ok)"></span>Complete</span><span><span class="sw" style="background:var(--bad)"></span>Incomplete (hatched)</span><span>Dashed line: threshold</span></div>
+    <div class="cw"><canvas id="c9a"></canvas></div>
+    <h3 class="h3">Measure over time</h3>
+    <div class="legend"><span><span class="sw" style="background:var(--bad)"></span>Delayed (cross)</span><span><span class="sw" style="background:var(--ok);border-radius:50%"></span>On time (circle)</span></div>
+    <div class="cw"><canvas id="c9b"></canvas></div>
+    <h3 class="h3">Delayed samples per burst</h3>
+    <div class="cw"><canvas id="c9c"></canvas></div>
+    <h3 class="h3">Delayed share by hour of day</h3>
+    <div class="cw"><canvas id="c9d"></canvas></div>
+    <h3 class="h3">Sample list</h3>
+    <div class="ctl dctl">
+      <label>Show <select id="dFilt"><option value="all">All samples</option><option value="d" selected>Delayed only</option><option value="o">On time only</option><option value="n">Untagged (first in burst)</option></select></label>
+      <label>Type <select id="dType"><option value="all">All</option><option value="c">Complete</option><option value="i">Incomplete</option></select></label>
+      <span id="dCount"></span>
+    </div>
+    <div class="tw"><table id="dTab"></table></div>
+    <div style="margin-top:8px"><button id="dMore" hidden>Show all rows</button></div>
+  </div></details>
+
+  <footer>
+    <button id="expAll">Expand all</button><button id="colAll">Collapse all</button>
+    <button id="xlsx" class="primary">Export to Excel</button>
+    <button id="png">Save charts as PNG</button>
+    <span class="files" id="expMsg"></span>
+  </footer>
+</section>
+</main>
+<script>
+{{CORE}}
+{{APP}}
+</script></body></html>
